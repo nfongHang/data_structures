@@ -41,11 +41,10 @@ class Matrix:
     def __setattr__(self, name, value):
         match name:
             case "matrix":
-                if len(value) == self.rows and all(len(row) == self.columns for row in value):
-                    object.__setattr__(self,name,value)
-                else:
-                    print(Error("Mat_04", f"{name,value}Matrix input must be of same size as predetermined matrix. Hint: Matrix indices go by Matrix[row][column]"))
-                    return -1
+                print(value)
+                if not (len(value) == self.rows and all([len(row) == self.columns for row in value])):
+                    self.rows, self.columns = len(value), len(value[0])
+                object.__setattr__(self,name,value)
             case _:
                 object.__setattr__(self,name,value)
 
@@ -65,7 +64,7 @@ class Matrix:
             result.matrix=[[self.matrix[row][column]-m2.matrix[row][column] for column in range(self.columns)] for row in range(self.rows)] 
             return result
         else:
-            print(Error("Mat_01","Invalid addition of two matrices of different sizes"))
+            print(Error("Mat_01_a","Invalid addition of two matrices of different sizes"))
             return -1
 
     def __sub__(self,m2):
@@ -78,7 +77,7 @@ class Matrix:
             result.matrix=[[self.matrix[row][column]-m2.matrix[row][column] for column in range(self.columns)] for row in range(self.rows)]
             return result
         else:
-            print(Error("Mat_01","Invalid subtraction of two matrices of different sizes"))
+            print(Error("Mat_01_b","Invalid subtraction of two matrices of different sizes"))
             return -1
 
     def __mul__(self,m2):
@@ -114,7 +113,16 @@ class Matrix:
             return True
         else:
             return False
-        
+    
+    def convertColumnToRow(self):
+        """
+        Converts column vectors(nx1 matrix) to row vectors(1xn matrix)
+        """
+        if self.isVector() and self.columns==1:
+            self.matrix=[[i for item in self.matrix for i in item]]
+        else:
+            print(Exception("Mat_04","Vector is already row vector or is a matrix"))
+
     def addRows(self, count : int = 1):
         """
         Adds rows to the matrix. count must be a non zero integer.
@@ -154,44 +162,40 @@ class Matrix:
             #move up depending if rows have been swapped:
             row-=swapped_rows
             pivot=result.matrix[row][column]
-            found=None
             
             #if pivot chosen is 0:
-            if pivot==0:
-                found=False #flag for whether if a second suitable pivot for the same column in different rows has been chosen
-                while not found:
-                    for i in range(row+1, result.rows):
-                        if result.matrix[i][column]!=0:
-                            result.swap_rows(((row)%result.rows),((i)%result.rows))     #swap the row that is suitable with the row with approprate pivot
-                            swapped_rows+=1
-                            found=True
-                            pivot=result.matrix[row][column]
-                            break
-                    if not found:
-                        #move column to right by one
-                        if column+1<result.columns:
-                            #skip the column and move to the next
-                            column+=1
-                        else:
-                            #if all the below rows are 0s:
-                            found=-1
-            if found==None:
-                for i in range(row+1,result.rows): # loop through all the rows below the pivot is 
-                    #if the bottom rows is 0, skip
-                    if sum(result.matrix[i])==0:
-                        continue
-                    factor=result.matrix[i][column]/pivot
-                    for j in range(column+1,result.columns): #starting from the column after the column under the pivot
-                        result.matrix[i][j]=result.matrix[i][j]-result.matrix[row][j]*factor
-                        ##print(result)
-                    result.matrix[i][column]=0
-                #increment column count by 1 if successful pivot has been found
-                if column+1<self.columns:
+            while pivot==0:
+                found_pivot=False
+                for i in range(row+1, result.rows):
+                    if result.matrix[i][column]!=0:
+                        result.swap_rows(((row)%result.rows),((i)%result.rows))     #swap the row that is suitable with the row with approprate pivot
+                        swapped_rows+=1
+                        found_pivot=True
+                        pivot=result.matrix[row][column]
+                        break
+                if not found_pivot:
+                    #move column to right by one
                     column+=1
-            elif found==-1:
-                break
-            
-        return result, int(not(swapped_rows%2))*2-1
+                    if column>=result.columns:
+                        #if all the below rows are 0s:
+                        return result, -1 ** swapped_rows
+                    continue
+                    
+        
+            for i in range(row+1,result.rows): # loop through all the rows below the pivot is 
+                #if the bottom rows is 0, skip
+                if sum(result.matrix[i])==0:
+                    continue
+                #factor to multiply the row with
+                factor=result.matrix[i][column]/pivot
+                for j in range(column+1,result.columns): #reduce starting from the column after the column under the pivot
+                    result.matrix[i][j]-=result.matrix[row][j]*factor
+                result.matrix[i][column]=0
+
+            #increment column count by 1 if successful pivot has been found
+            if column+1 < self.columns: # if possible, try to move to next column
+                column+=1
+        return result, -1 ** swapped_rows
 
     #def RREF
 
@@ -214,6 +218,14 @@ class Matrix:
         else:
             print(Error("Mat_03","Invalid get_determinant operation: Non-square matrices do not have a determinant"))
             return -1
-        
+    
     #dot product
+    def dot(v1,v2):
+        #check for whether if m1 and m2 are vectors:
+        if v1.isVector() and v2.isVector() and (v1.columns==v2.rows or v1.rows==v2.columns):
+            v1.convertColumnToRow()
+            v2.convertColumnToRow()
+            return sum(v1.matrix[0][i]*v2.matrix[0][i] for i in range(v1.columns))
+        else:
+            return v1*v2
     #def get_dot_product(self):
